@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Crawler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        input {
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        progress {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        p {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Web Crawler</h1>
+
+    <label for="urlInput">URL:</label>
+    <input type="url" id="urlInput" required>
+
+    <label for="depthInput">Depth:</label>
+    <input type="number" id="depthInput" min="2" max="20" value="5" required>
+
+    <button type="button" onclick="crawl()">Crawl</button>
+
+    <!-- Add a progress bar -->
+    <label for="bar">Content Loaded</label>
+    <progress name="bar" id="loadingBar" value="0" max="100"></progress>
+
+    <!-- Add search input and button -->
+    <label for="searchInput">Search Text:</label>
+    <input type="text" id="searchInput">
+    <button type="button" onclick="search()">Search</button>
+
+    <!-- Display search results in a paragraph -->
+    <p id="searchResults"></p>
+
+    <script>
+        async function crawl() {
+            const url = document.getElementById('urlInput').value;
+            const depth = document.getElementById('depthInput').value;
+            const data = { url: url, depth: depth };
+            const loadingBar = document.getElementById('loadingBar');
+
+            try {
+                const response = await fetch('back-end/crawler.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                    // onprogress: onprogress_function
+                });
+
+                if (response.ok) {
+                    const responseData = await response.json();
+                    console.log(responseData);
+                } else {
+                    console.error('Server error:', response.status);
+                }
+            } catch (error) {
+                console.error('Error during fetch:', error);
+            }
+        }
+
+        function onprogress_function() {
+            const depth = parseInt(document.getElementById('depthInput').value);
+
+            fetch("back-end/completion.php")
+                .then(response => response.json())
+                .then(htmlFiles => {
+                    console.log(htmlFiles.htmlFiles, depth);
+                    const progress = parseInt((htmlFiles.htmlFiles / depth) * 100);
+                    updateProgressBar(progress);
+                })
+                .catch(error => console.error('Error fetching HTML files:', error));
+        }
+
+        function updateProgressBar(progress) {
+            const loadingBar = document.getElementById('loadingBar');
+            loadingBar.value = progress;
+        }
+
+        setInterval(() => {
+            onprogress_function();
+        }, 1000);
+
+        async function search() {
+            const searchText = document.getElementById('searchInput').value;
+
+            try {
+                const response = await fetch('back-end/search.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ searchText: searchText })
+                });
+
+                if (response.ok) {
+                    const responseData = await response.json();
+                    displaySearchResults(responseData);
+                } else {
+                    console.error('Server error:', response.status);
+                }
+            } catch (error) {
+                console.error('Error during fetch:', error);
+            }
+        }
+
+        function displaySearchResults(results) {
+            const searchResultsParagraph = document.getElementById('searchResults');
+            searchResultsParagraph.innerText = results.message;
+        }
+    </script>
+
+</body>
+
+</html>
